@@ -46,6 +46,7 @@
             <RowDefinition Height="{Binding MetadataViewHeight, Mode=TwoWay, Converter={StaticResource gridLengthConverter}}"/>
             <RowDefinition Height="5"/>
             <RowDefinition Height="*"/>
+            <RowDefinition Height="20" />
             <RowDefinition Height="80" />
         </Grid.RowDefinitions>
         <Menu HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Grid.Row="0"
@@ -490,6 +491,16 @@
         <GridSplitter Grid.Row="4" Height="5" HorizontalAlignment="Stretch" ResizeBehavior="PreviousAndNext" ResizeDirection="Rows"  />
         <local:CommentDataGrid IsShowUserInfoMenuItem="True" ForceShowInvisibleComments="False" Margin="5" Grid.Row="5" />
         <Grid Grid.Row="6">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="50" />
+                <ColumnDefinition Width="100" />
+                <ColumnDefinition />
+            </Grid.ColumnDefinitions>
+            <CheckBox Content="AI" Name="KoharuAI" IsChecked="{Binding IsAIEnabled}" Grid.Column="0"/>
+            <CheckBox Content="AutoSend" IsChecked="{Binding AIAutoSend}" Grid.Column="1"/>
+            <TextBox Text="{Binding AIOutput}" Grid.Column="2"/>
+        </Grid>
+        <Grid Grid.Row="7">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="100" />
                 <ColumnDefinition />

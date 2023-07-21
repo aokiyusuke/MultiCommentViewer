@@ -24,6 +24,8 @@ using System.Windows;
 using System.Windows.Controls;
 using NicoSitePlugin;
 using MixchSitePlugin;
+using System.IO;
+using System.Windows.Shapes;
 
 namespace MultiCommentViewer
 {
@@ -149,7 +151,25 @@ namespace MultiCommentViewer
         Dictionary<ConnectionViewModel, MetadataViewModel> _metaDict = new Dictionary<ConnectionViewModel, MetadataViewModel>();
         ConnectionSerializerLoader _connectionSerializerLoader = new ConnectionSerializerLoader("settings\\connections.txt");
         #endregion //Fields
-
+        private bool _IsAIEnabled = false;
+        public bool IsAIEnabled {
+            get { return _IsAIEnabled; }
+            set { _IsAIEnabled = value; }
+        }
+        private bool _AIAutoSend = false;
+        public bool AIAutoSend
+        {
+            get { return _AIAutoSend; }
+            set { _AIAutoSend = value; }
+        }
+        private string _AIOutput = "";
+        public String AIOutput {
+            get { return _AIOutput; }
+            set {
+                _AIOutput = value;
+                RaisePropertyChanged();
+            }
+        }
 
         #region Methods
         private void Activated()
@@ -968,6 +988,57 @@ namespace MultiCommentViewer
                 _comments.Add(mcvCvm);
             }
         }
+        // AOKI
+        static readonly object _koharuailock = new object();
+        static int _koharuaicount = 0;
+        private void KoharuAI(ConnectionViewModel cvm, IMessageContext mc)
+        {
+            if (_koharuaicount > 10)
+            {
+                Debug.Print("Too much simultanious call of Koharu AI. Skip responsing to this comment★★★★★★★★★★");
+                return;
+            }
+            if (cvm != null && mc.Message is YouTubeLiveSitePlugin.IYouTubeLiveComment && IsAIEnabled)
+            {
+                Task.Run(() =>
+                {
+                    lock (_koharuailock) {
+                        _koharuaicount++;
+                        YouTubeLiveSitePlugin.IYouTubeLiveComment message = (YouTubeLiveSitePlugin.IYouTubeLiveComment)mc.Message;
+                        string comment = message.CommentItems.ToText();
+                        comment = comment != null ? comment.Trim() : ".";
+                        string userid = message.UserId;
+                        userid = userid != null ? userid.Trim() : "UNKNOWN";
+                        string username = message.NameItems.ToText();
+                        username = username != null ? username.Trim() : "(no name)";
+                        if (comment.Length > 0)
+                        {
+                            string exepath = AppDomain.CurrentDomain.BaseDirectory;
+                            Process process = new Process();
+                            process.StartInfo.FileName = @"python.exe";
+                            process.StartInfo.Arguments = $"{exepath}koharuai.py \"{userid}\" \"{username}\" \"{comment}\"";
+                            process.StartInfo.CreateNoWindow = true;
+                            process.StartInfo.UseShellExecute = false;
+                            process.StartInfo.RedirectStandardOutput = true;
+                            bool br = process.Start();
+                            string output = process.StandardOutput.ReadToEnd();
+                            process.WaitForExit();
+                            var ec = process.ExitCode;
+                            process.Close();
+                            output = output.Trim();
+                            Debug.WriteLine("KOHARUAI: >" + comment);
+                            Debug.WriteLine("KOHARUAI: <" + output);
+                            AIOutput = output;
+                            if (AIAutoSend && output.Length > 0)
+                            {
+                                cvm.CommentProvider.PostCommentAsync(output);
+                            }
+                        }
+                        _koharuaicount--;
+                    }
+                });
+            }
+        }
         #region EventHandler
         private async void Connection_MessageReceived(object sender, IMessageContext e)
         {
@@ -989,7 +1060,9 @@ namespace MultiCommentViewer
                     //    _userDict.Add(comment.UserId, uvm);
                     //}
                     //comment.User = uvm.User;
-                    AddComment(comment, connectionViewModel);
+                    AddComment(comment, connectionViewModel); // AOKI; a message received, adding it to the view
+                    //_pluginManager.SetMessage
+                    KoharuAI(_selectedConnection, e);
                     //uvm.Comments.Add(comment);
                 }), DispatcherPriority.Normal);
                 //プラグインに渡すのはIInfoMessage以外全て
