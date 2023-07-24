@@ -1020,6 +1020,7 @@ namespace MultiCommentViewer
                             process.StartInfo.CreateNoWindow = true;
                             process.StartInfo.UseShellExecute = false;
                             process.StartInfo.RedirectStandardOutput = true;
+                            process.StartInfo.StandardOutputEncoding = Encoding.UTF8;
                             bool br = process.Start();
                             string output = process.StandardOutput.ReadToEnd();
                             process.WaitForExit();
@@ -1031,7 +1032,52 @@ namespace MultiCommentViewer
                             AIOutput = output;
                             if (AIAutoSend && output.Length > 0)
                             {
-                                cvm.CommentProvider.PostCommentAsync(output);
+                                string[] lines = output.Split(new string[] { "\r\n" }, StringSplitOptions.None);
+                                var outlines = new List<string>();
+                                foreach (string line in lines)
+                                {
+                                    string tmpline = line;
+                                    while (tmpline.Length > 0)
+                                    {
+                                        string chunk = null;
+                                        if (tmpline.Length > 180)
+                                        {
+                                            char[] punctuation = { '.', ',', ' ', '\t', ';', ':', '\r', '。', '、'};
+                                            int cutpoint = tmpline.LastIndexOfAny(punctuation, 180);
+                                            if (cutpoint > 140)
+                                            {
+                                                chunk = tmpline.Substring(0, cutpoint).Trim();
+                                                tmpline = tmpline.Substring(cutpoint).Trim();
+                                            }
+                                            else
+                                            {
+                                                chunk = tmpline.Substring(0, 180).Trim();
+                                                tmpline = tmpline.Substring(180).Trim();
+                                            }
+                                        }
+                                        else
+                                        {
+                                            chunk = tmpline.Trim();
+                                            tmpline = "";
+                                        }
+                                        if (chunk.Length > 0) outlines.Add(chunk); 
+                                    }
+                                }
+                                int totallines = outlines.Count;
+                                for (int i = 0; i < totallines; i++)
+                                {
+                                    string chunk = null;
+                                    if (totallines == 1)
+                                    {
+                                        chunk = "🄰🄸💬" + outlines[i];
+                                    } else
+                                    {
+                                        chunk = "🄰🄸💬" + outlines[i] + "(" + (i + 1) + "/" + totallines + ")";
+                                    }
+                                    cvm.CommentProvider.PostCommentAsync(chunk);
+                                    Thread.Sleep(500);
+                                    Debug.WriteLine("KOHARUAI: <<" + chunk);
+                                }
                             }
                         }
                         _koharuaicount--;
