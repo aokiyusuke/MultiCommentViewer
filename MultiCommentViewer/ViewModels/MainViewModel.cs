@@ -995,7 +995,7 @@ namespace MultiCommentViewer
         {
             if (_koharuaicount > 10)
             {
-                Debug.Print("Too much simultanious call of Koharu AI. Skip responsing to this comment★★★★★★★★★★");
+                Debug.Print("Too much simultanious calls of Koharu AI. Skip responsing to this comment★★★★★★★★★★");
                 return;
             }
             if (cvm != null && mc.Message is YouTubeLiveSitePlugin.IYouTubeLiveComment && IsAIEnabled)
@@ -1034,25 +1034,26 @@ namespace MultiCommentViewer
                             {
                                 string[] lines = output.Split(new string[] { "\r\n" }, StringSplitOptions.None);
                                 var outlines = new List<string>();
+                                const int commentlimit = 180;
                                 foreach (string line in lines)
                                 {
                                     string tmpline = line;
                                     while (tmpline.Length > 0)
                                     {
                                         string chunk = null;
-                                        if (tmpline.Length > 180)
+                                        if (tmpline.Length > commentlimit)
                                         {
-                                            char[] punctuation = { '.', ',', ' ', '\t', ';', ':', '\r', '。', '、'};
-                                            int cutpoint = tmpline.LastIndexOfAny(punctuation, 180);
-                                            if (cutpoint > 140)
+                                            char[] punctuation = { '.', ',', ' ', '\t', ';', ':', '\r', '!', '?', '。', '、', '！', '？'};
+                                            int cutpoint = tmpline.LastIndexOfAny(punctuation, commentlimit);
+                                            if (cutpoint > commentlimit - 40)
                                             {
                                                 chunk = tmpline.Substring(0, cutpoint).Trim();
                                                 tmpline = tmpline.Substring(cutpoint).Trim();
                                             }
                                             else
                                             {
-                                                chunk = tmpline.Substring(0, 180).Trim();
-                                                tmpline = tmpline.Substring(180).Trim();
+                                                chunk = tmpline.Substring(0, commentlimit).Trim();
+                                                tmpline = tmpline.Substring(commentlimit).Trim();
                                             }
                                         }
                                         else
