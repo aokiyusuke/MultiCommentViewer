@@ -7,12 +7,12 @@
              d:DataContext="{d:DesignInstance local:CommentPostPanelViewModel, IsDesignTimeCreatable=True}"
              mc:Ignorable="d" Height="50" Width="330">
     <Grid Margin="0,0,5,5">
-        <TextBox HorizontalAlignment="Stretch" Height="23" IsEnabled="{Binding CanPostComment}" Margin="0,27,85,0" TextWrapping="NoWrap" Text="{Binding Comment, UpdateSourceTrigger=PropertyChanged}" VerticalAlignment="Bottom">
+        <TextBox Height="35" IsEnabled="{Binding CanPostComment}" Margin="0,0,85,0" TextWrapping="NoWrap" Text="{Binding Comment, UpdateSourceTrigger=PropertyChanged}" VerticalAlignment="Bottom" FontSize="24" TextChanged="TextBox_TextChanged">
             <TextBox.InputBindings>
                 <KeyBinding Command="{Binding PostCommentCommand}" Key="Return" />
             </TextBox.InputBindings>
         </TextBox>
-        <Button Content="投稿" Command="{Binding PostCommentCommand}" IsEnabled="{Binding CanPostComment}" HorizontalAlignment="Right" Margin="0,27,0,0" VerticalAlignment="Bottom" Width="75"/>
+        <Button Content="投稿" Command="{Binding PostCommentCommand}" IsEnabled="{Binding CanPostComment}" HorizontalAlignment="Right" VerticalAlignment="Bottom" Width="75" Height="35" FontSize="24"/>
 
     </Grid>
 </UserControl>

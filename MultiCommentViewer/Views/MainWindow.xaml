@@ -492,13 +492,16 @@
         <local:CommentDataGrid IsShowUserInfoMenuItem="True" ForceShowInvisibleComments="False" Margin="5" Grid.Row="5" />
         <Grid Grid.Row="6">
             <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="10" />
                 <ColumnDefinition Width="50" />
                 <ColumnDefinition Width="100" />
+                <ColumnDefinition Width="50" />
                 <ColumnDefinition />
             </Grid.ColumnDefinitions>
-            <CheckBox Content="AI" Name="KoharuAI" IsChecked="{Binding IsAIEnabled}" Grid.Column="0"/>
-            <CheckBox Content="AutoSend" IsChecked="{Binding AIAutoSend}" Grid.Column="1"/>
-            <TextBox Text="{Binding AIOutput}" Grid.Column="2"/>
+            <CheckBox Content="AI" Name="KoharuAI" IsChecked="{Binding IsAIEnabled}" Grid.Column="1"/>
+            <CheckBox Content="AutoSend" IsChecked="{Binding AIAutoSend}" Grid.Column="2"/>
+            <CheckBox Content="TR" Name="KoharuTR" IsChecked="{Binding IsTREnabled}" Grid.Column="3"/>
+            <TextBox Text="{Binding AIOutput}" Grid.Column="4" IsReadOnly="True"/>
         </Grid>
         <Grid Grid.Row="7">
             <Grid.ColumnDefinitions>

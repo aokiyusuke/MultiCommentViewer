@@ -26,6 +26,9 @@ using NicoSitePlugin;
 using MixchSitePlugin;
 using System.IO;
 using System.Windows.Shapes;
+using Newtonsoft.Json;
+using Common.Test;
+using Org.BouncyCastle.Crypto;
 
 namespace MultiCommentViewer
 {
@@ -154,13 +157,13 @@ namespace MultiCommentViewer
         private bool _IsAIEnabled = false;
         public bool IsAIEnabled {
             get { return _IsAIEnabled; }
-            set { _IsAIEnabled = value; }
+            set { _IsAIEnabled = value; RaisePropertyChanged(); }
         }
         private bool _AIAutoSend = false;
         public bool AIAutoSend
         {
             get { return _AIAutoSend; }
-            set { _AIAutoSend = value; }
+            set { _AIAutoSend = value; RaisePropertyChanged(); }
         }
         private string _AIOutput = "";
         public String AIOutput {
@@ -170,7 +173,12 @@ namespace MultiCommentViewer
                 RaisePropertyChanged();
             }
         }
-
+        private bool _IsTREnabled = false;
+        public bool IsTREnabled
+        {
+            get { return _IsTREnabled; }
+            set { _IsTREnabled = value; RaisePropertyChanged(); }
+        }
         #region Methods
         private void Activated()
         {
@@ -989,6 +997,71 @@ namespace MultiCommentViewer
             }
         }
         // AOKI
+        static public string CallPython(string script, params string[] param)
+        {
+            string exepath = AppDomain.CurrentDomain.BaseDirectory;
+            string[] paramlist = new string[param.Length];
+            for (var i = 0; i < param.Length; i++)
+            {
+                paramlist[i] = "\"" + param[i] + "\"";
+            }
+            string paramstr = String.Join(" ", paramlist);
+            Process process = new Process();
+            process.StartInfo.FileName = @"python.exe";
+            process.StartInfo.Arguments = $"{exepath}{script}.py {paramstr}";
+            process.StartInfo.CreateNoWindow = true;
+            process.StartInfo.UseShellExecute = false;
+            process.StartInfo.RedirectStandardOutput = true;
+            process.StartInfo.StandardOutputEncoding = Encoding.UTF8;
+            string output = "";
+            if (process.Start()) { 
+                output = process.StandardOutput.ReadToEnd();
+                process.WaitForExit();
+                var ec = process.ExitCode;
+                process.Close();
+            }
+            return output.Trim();
+        }
+        const string koharuaihead = "🄰🄸💬";
+        const string koharuaihead2 = "🄰🄸";
+        const string koharuaihead3 = "🄰";
+        static readonly object _koharutrlock = new object();
+        static int _koharutrcount = 0;
+        private void KoharuTR(IMessageContext mc)
+        {
+            if (!(mc.Message is YouTubeLiveSitePlugin.IYouTubeLiveComment) || !IsTREnabled) return;
+
+            YouTubeLiveSitePlugin.IYouTubeLiveComment message = (YouTubeLiveSitePlugin.IYouTubeLiveComment)mc.Message;
+            string comment = message.CommentItems.ToText();
+            comment = comment != null ? comment.Trim() : "";
+            if (comment.StartsWith(koharuaihead))
+            {
+                comment = comment.Substring(koharuaihead.Length);
+            }
+            if (comment.StartsWith(koharuaihead2))
+            {
+                comment = comment.Substring(koharuaihead2.Length);
+            }
+            if (comment.StartsWith(koharuaihead3))
+            {
+                comment = comment.Substring(koharuaihead3.Length);
+            }
+            if (comment.Length > 0)
+            {
+                string output = CallPython("koharutr", comment);
+                dynamic d = JsonConvert.DeserializeObject(output);
+                if (d != null && d.ContainsKey("translations"))
+                {
+                    dynamic dd = d["translations"][0];
+                    var lang = dd.ContainsKey("detected_source_language") ? dd["detected_source_language"] : "";
+                    var trans = dd.ContainsKey("text") ? dd["text"] : "";
+                    string text = $"({lang}⇒{trans})";
+                    SetSystemInfo(text, InfoType.None);
+                }
+                Debug.WriteLine("KOHARUTR: >" + comment);
+                Debug.WriteLine("KOHARUTR: <" + output);
+            }
+        }
         static readonly object _koharuailock = new object();
         static int _koharuaicount = 0;
         private void KoharuAI(ConnectionViewModel cvm, IMessageContext mc)
@@ -1013,20 +1086,7 @@ namespace MultiCommentViewer
                         username = username != null ? username.Trim() : "(no name)";
                         if (comment.Length > 0)
                         {
-                            string exepath = AppDomain.CurrentDomain.BaseDirectory;
-                            Process process = new Process();
-                            process.StartInfo.FileName = @"python.exe";
-                            process.StartInfo.Arguments = $"{exepath}koharuai.py \"{userid}\" \"{username}\" \"{comment}\"";
-                            process.StartInfo.CreateNoWindow = true;
-                            process.StartInfo.UseShellExecute = false;
-                            process.StartInfo.RedirectStandardOutput = true;
-                            process.StartInfo.StandardOutputEncoding = Encoding.UTF8;
-                            bool br = process.Start();
-                            string output = process.StandardOutput.ReadToEnd();
-                            process.WaitForExit();
-                            var ec = process.ExitCode;
-                            process.Close();
-                            output = output.Trim();
+                            string output = CallPython("koharuai", userid, username, comment);
                             Debug.WriteLine("KOHARUAI: >" + comment);
                             Debug.WriteLine("KOHARUAI: <" + output);
                             AIOutput = output;
@@ -1070,10 +1130,10 @@ namespace MultiCommentViewer
                                     string chunk = null;
                                     if (totallines == 1)
                                     {
-                                        chunk = "🄰🄸💬" + outlines[i];
+                                        chunk = koharuaihead + outlines[i];
                                     } else
                                     {
-                                        chunk = "🄰🄸💬" + outlines[i] + "(" + (i + 1) + "/" + totallines + ")";
+                                        chunk = koharuaihead + outlines[i] + "(" + (i + 1) + "/" + totallines + ")";
                                     }
                                     cvm.CommentProvider.PostCommentAsync(chunk);
                                     Thread.Sleep(500);
@@ -1108,7 +1168,7 @@ namespace MultiCommentViewer
                     //}
                     //comment.User = uvm.User;
                     AddComment(comment, connectionViewModel); // AOKI; a message received, adding it to the view
-                    //_pluginManager.SetMessage
+                    KoharuTR(e);
                     KoharuAI(_selectedConnection, e);
                     //uvm.Comments.Add(comment);
                 }), DispatcherPriority.Normal);
@@ -1116,6 +1176,7 @@ namespace MultiCommentViewer
                 if (!(e.Message is IInfoMessage))
                 {
                     _pluginManager.SetMessage(e.Message, e.Metadata);
+                    //KoharuTR(e);
                 }
                 await methods.AfterCommentAdded();
             }
